@@ -1,3 +1,4 @@
+# rename to config.ini
 [redis]
 port:6379 
 host:localhost 
