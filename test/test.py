@@ -1,5 +1,7 @@
 from bottle import route 
-import redis, configparser, thread, requests, jsonpickle
+from boto.s3.key import Key
+import redis, configparser, thread, requests, jsonpickle, boto, boto.s3.connection
+
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -8,6 +10,20 @@ thost = config.get('bottle','host')
 tport = config.getint('bottle','port')
 syskey = config.get('application','syskey')
 
+s3key = config.get('s3','aws_access_key_id')
+s3secret = config.get('s3','aws_secret_access_key')
+
+#conn = boto.connect_s3(
+#        aws_access_key_id = s3key,
+#        aws_secret_access_key = s3secret,
+#        calling_format = boto.s3.connection.OrdinaryCallingFormat(),
+#        )
+#bucket = conn.get_bucket('lms-io')
+#key = Key(bucket) 
+#key.key = "index.html"
+#key.set_contents_from_filename('requirements.txt')
+
+#sys.exit(0)
 ###################################
 url = "http://%s:%s/sys/bad" % (thost,tport)
 r = requests.get(url)
@@ -286,4 +302,70 @@ json = jsonpickle.decode(r.text)
 print(json)
 if json.get("name") != "test2":
     raise ValueError("I should be allowed in")
+
+###################################
+url = "http://%s:%s/sys/%s/organization/new/test" % (thost,tport, syskey)
+r = requests.get(url)
+print(url)
+json = jsonpickle.decode(r.text)
+print(json)
+if json.get("id") == None:
+    raise ValueError("I should be allowed in")
+
+org = json.get("id")
+
+url = "http://%s:%s/sys/%s/%s/course/new/test" % (thost,tport, syskey, org)
+r = requests.get(url)
+print(url)
+json = jsonpickle.decode(r.text)
+print(json)
+course = json.get('id')
+url = "http://%s:%s/sys/%s/%s/upload/%s" % (thost,tport, syskey, org, course)
+r = requests.post(url, files={'upload': open('test/zips/macfolder.zip', 'rb')})
+
+url = "http://%s:%s/sys/%s/%s/course/new/test" % (thost,tport, syskey, org)
+r = requests.get(url)
+print(url)
+json = jsonpickle.decode(r.text)
+print(json)
+course = json.get('id')
+url = "http://%s:%s/sys/%s/%s/upload/%s" % (thost,tport, syskey, org, course)
+r = requests.post(url, files={'upload': open('test/zips/nofolder.zip', 'rb')})
+
+url = "http://%s:%s/sys/%s/%s/course/new/test" % (thost,tport, syskey, org)
+r = requests.get(url)
+print(url)
+json = jsonpickle.decode(r.text)
+print(json)
+course = json.get('id')
+url = "http://%s:%s/sys/%s/%s/upload/%s" % (thost,tport, syskey, org, course)
+r = requests.post(url, files={'upload': open('test/zips/zip_with_no_html.zip', 'rb')})
+
+url = "http://%s:%s/sys/%s/%s/course/new/test" % (thost,tport, syskey, org)
+r = requests.get(url)
+print(url)
+json = jsonpickle.decode(r.text)
+print(json)
+course = json.get('id')
+url = "http://%s:%s/sys/%s/%s/upload/%s" % (thost,tport, syskey, org, course)
+r = requests.post(url, files={'upload': open('test/zips/zip_with_stuff_bad.zip', 'rb')})
+
+url = "http://%s:%s/sys/%s/%s/course/new/test" % (thost,tport, syskey, org)
+r = requests.get(url)
+print(url)
+json = jsonpickle.decode(r.text)
+print(json)
+course = json.get('id')
+url = "http://%s:%s/sys/%s/%s/upload/%s" % (thost,tport, syskey, org, course)
+r = requests.post(url, files={'upload': open('test/zips/zip_with_stuff_good.zip', 'rb')})
+
+url = "http://%s:%s/sys/%s/%s/course/new/test" % (thost,tport, syskey, org)
+r = requests.get(url)
+print(url)
+json = jsonpickle.decode(r.text)
+print(json)
+course = json.get('id')
+url = "http://%s:%s/sys/%s/%s/upload/%s" % (thost,tport, syskey, org, course)
+r = requests.post(url, files={'upload': open('test/zips/zip_with_nothing.zip', 'rb')})
+
 

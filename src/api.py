@@ -3,7 +3,7 @@ from organization import Organization
 from registration import Registration 
 from user import User 
 from course import Course
-import redis, configparser, thread, requests, sys, jsonpickle, random
+import redis, configparser, thread, requests, sys, jsonpickle, random, os, zipfile, shutil 
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -14,6 +14,10 @@ rdis = redis.StrictRedis(host=rhost, port=rport, db=rdb)
 
 syskey = config.get('application','syskey')
 debug = config.getboolean('application','debug')
+
+
+tempdir = config.get('upload','tempdir')
+unzipdir = config.get('upload','unzipdir')
 
 def valid_for(org,tup):
     for t in tup:
@@ -140,3 +144,55 @@ def api_track_registration(org="", reg="", course=""):
         return to_json(rdis.hmget('%s:track:%s:%s' % (organization.key,registration.id,course.id), key))
     else:
         return to_json(rdis.hgetall('%s:track:%s:%s' % (organization.key,registration.id,course.id)))
+
+@route('/sys/<key>/<org>/upload/<course>', method='POST')
+def upload_course(key="",org="",course=""):
+
+    id = 'UPLOAD_'+new_id()
+    upload     = request.files.get('upload')
+    name, ext = os.path.splitext(upload.filename)
+    save_path = tempdir + id + "/" 
+    final_path = unzipdir + course + "/" 
+    move_path = tempdir + new_id() + "/" 
+    save_zip = save_path + upload.filename
+    content_folder = save_path + "/" + name
+
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    upload.save(save_path) 
+
+    with zipfile.ZipFile(save_zip, "r") as z:
+        z.extractall(save_path)
+    os.remove(save_zip)
+
+    # ugh 
+    if os.path.exists(save_path + "__MACOSX"):
+        shutil.rmtree(save_path + "__MACOSX")
+    
+    # one subfolder exists, pull it back a directory
+    if len(os.listdir(save_path)) == 1 and os.path.exists(save_path + os.listdir(save_path)[0]):
+        extract_path = save_path + os.listdir(save_path)[0]
+        shutil.move(extract_path, move_path)
+        shutil.rmtree(save_path)
+        shutil.move(move_path, save_path)
+
+    # more cleanup, what are they calling the file names today?
+    # sometimes it comes through as My Course Name.html
+    # other times it comes through as index_lms.html
+    if os.path.isfile(save_path + "index_lms.html"):
+        shutil.move(save_path + "index_lms.html", save_path + "index.html")
+    elif os.path.isfile(save_path + name + ".html"):
+        shutil.move(save_path + name + ".html", save_path + "index.html")
+
+    # finally check to see if we have a valid index file
+    # if we do, move it to the right place
+
+    if os.path.isfile(save_path + "index.html"):
+        shutil.move(save_path,final_path) 
+    else:
+        # I don't know what to do, abort!
+        shutil.rmtree(save_path)
+        return ""
+
+    return 'OK'

@@ -13,10 +13,15 @@ host:localhost
 port:8008
 debug:True
 
+[upload]
+tempdir:/tmp/
+unzipdir:/var/www/content/
+
 [application]
 debug:True 
 syskey:KEYGOESHERE
 
 [s3]
+aws_enabled=False
 aws_access_key_id=<<awskey>>
 aws_secret_access_key=<<awssecret>>
