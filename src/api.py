@@ -171,11 +171,14 @@ def upload_course(key="",org="",course=""):
     id = 'UPLOAD_'+new_id()
     upload     = request.files.get('upload')
     name, ext = os.path.splitext(upload.filename)
+
     save_path = tempdir + id + "/" 
-    final_path = unzipdir + course + "/" 
-    move_path = tempdir + new_id() + "/" 
     save_zip = save_path + upload.filename
-    content_folder = save_path + "/" + name
+
+    move_path = tempdir + new_id() + "/" 
+
+    content_folder = unzipdir + "/" + name
+    final_path = unzipdir + course + "/" 
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -211,8 +214,8 @@ def upload_course(key="",org="",course=""):
     if os.path.isfile(save_path + "index.html"):
         shutil.move(save_path,final_path) 
     else:
-        # I don't know what to do, abort!
         shutil.rmtree(save_path)
+        # I don't know what to do, abort!
         return ""
 
     return 'OK'

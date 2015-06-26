@@ -366,7 +366,7 @@ json = jsonpickle.decode(r.text)
 print(json)
 course = json.get('id')
 url = "http://%s:%s/sys/%s/%s/upload/%s" % (thost,tport, syskey, org, course)
-r = requests.post(url, files={'upload': open('test/zips/zip_with_nothing.zip', 'rb')})
+r = requests.post(url, files={'upload': open('test/zips/macfolder.zip', 'rb')})
 
 url = "http://%s:%s/sys/%s/%s/registration/new/test/123" % (thost,tport, syskey, org)
 r = requests.get(url)
