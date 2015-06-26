@@ -18,6 +18,7 @@ debug = config.getboolean('application','debug')
 
 tempdir = config.get('upload','tempdir')
 unzipdir = config.get('upload','unzipdir')
+apachedir = config.get('upload','apachedir')
 
 def valid_for(org,tup):
     for t in tup:
@@ -145,8 +146,27 @@ def api_track_registration(org="", reg="", course=""):
     else:
         return to_json(rdis.hgetall('%s:track:%s:%s' % (organization.key,registration.id,course.id)))
 
+@route('/sys/<key>/<org>/link/<reg>/<course>')
+def api_link_course(key="",org="", reg="", course=""):
+    if not is_sys(key,org): return ""
+
+    organization = from_json(rdis.get(Organization().to_key(org)))
+    course = from_json(rdis.get(Course().to_key(org,course)))
+    registration = from_json(rdis.get(Registration().to_key(org,reg)))
+    if not valid_for(organization,(course,registration)): return ""
+
+    course_path = unzipdir + course.id
+    course_destination_path = apachedir + course.id
+    content_path = course_destination_path + "/" + registration.id 
+
+    if not os.path.exists(course_destination_path):
+        os.makedirs(course_destination_path)
+    os.symlink(course_path, content_path) 
+    return "OK"
+
 @route('/sys/<key>/<org>/upload/<course>', method='POST')
 def upload_course(key="",org="",course=""):
+    if not is_sys(key,org): return ""
 
     id = 'UPLOAD_'+new_id()
     upload     = request.files.get('upload')
@@ -196,3 +216,5 @@ def upload_course(key="",org="",course=""):
         return ""
 
     return 'OK'
+    
+
