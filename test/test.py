@@ -49,6 +49,14 @@ json = jsonpickle.decode(r.text)
 print(json)
 if json.get("name") != "acme corporation":
     raise ValueError("I should be allowed in")
+###################################
+url = "http://%s:%s/sys/%s/organization/all" % (thost,tport, syskey)
+r = requests.get(url)
+print(url)
+json = jsonpickle.decode(r.text)
+print(json)
+if len(json) == 0:
+    raise ValueError("I should be allowed in")
 
 ###################################
 url = "http://%s:%s/sys/%s/organization/new/acme corporation 2/TESTID" % (thost,tport, syskey)

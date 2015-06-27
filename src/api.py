@@ -17,8 +17,9 @@ debug = config.getboolean('application','debug')
 
 
 tempdir = config.get('upload','tempdir')
-unzipdir = config.get('upload','unzipdir')
-apachedir = config.get('upload','apachedir')
+finaldir = config.get('upload','finaldir')
+webdir = config.get('upload','webdir')
+contenthost = config.get('content','host')
 
 def valid_for(org,tup):
     for t in tup:
@@ -48,26 +49,44 @@ def is_sys(key,org=None):
 def new_id():
     return ''.join(random.choice('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ') for i in range(16))
 
+def callback(r, v):
+    print(r.query.get('callback'))
+    if r.query.get('callback') is not None:
+        return '%s(%s)' % (r.query.get('callback'),v)
+    else:
+        return v
+
 @route('/sys/<key>')
 def sys_is_working(key=""):
     if not is_sys(key): return ""
     rdis.set('version','1.3')
-    return rdis.get('version') 
+    return callback(request,rdis.get('version')) 
 
 @route('/sys/<key>/organization/new/<name>')
 @route('/sys/<key>/organization/new/<name>/<id>')
 def sys_new_organization(key="",id="",name=""):
-    if not is_sys(key): return ""
+    if not is_sys(key): return callback(request,"") 
     if id =="":
         id=new_id()
     organization = Organization(id,name)
     rdis.set(organization.key,to_json(organization))
-    return rdis.get(organization.key) 
+    rdis.sadd('organization:list',organization.key)
+    return callback(request,rdis.get(organization.key)) 
+
+@route('/sys/<key>/organization/all')
+def sys_new_organization(key="",id="",name=""):
+    if not is_sys(key): return callback(request,"") 
+
+    orgs = rdis.smembers('organization:list')
+    orgResp = []
+    for org in orgs:
+        orgResp.append(from_json(rdis.get(org)))
+    return callback(request,to_json(orgResp))
 
 @route('/sys/<key>/<org>/user/new/<name>')
 @route('/sys/<key>/<org>/user/new/<name>/<id>')
 def api_new_user(key="",org="",name="",id=""):
-    if not is_sys(key,org): return ""
+    if not is_sys(key,org): return callback(request,"") 
     if id =="":
         id=new_id()
 
@@ -75,22 +94,22 @@ def api_new_user(key="",org="",name="",id=""):
     user = User(id,name,organization)
     rdis.set(user.key,to_json(user))
     rdis.sadd('%s:user:list' % organization.key,user.key)
-    return rdis.get(user.key) 
+    return callback(request,rdis.get(user.key)) 
 
 @route('/sys/<key>/<org>/user/all')
 def api_all_users(key="",org=""):
-    if not is_sys(key): return ""
+    if not is_sys(key): return callback(request,"") 
     organization = from_json(rdis.get(Organization().to_key(org)))
     users = rdis.smembers('%s:user:list' % organization.key)
     userResp = []
     for user in users:
         userResp.append(from_json(rdis.get(user)))
-    return to_json(userResp)
+    return callback(request,to_json(userResp))
 
 @route('/sys/<key>/<org>/course/new/<name>')
 @route('/sys/<key>/<org>/course/new/<name>/<id>')
 def api_new_course(key="",org="",name="",id=""):
-    if not is_sys(key): return ""
+    if not is_sys(key): return callback(request,"") 
     if id =="":
         id=new_id()
 
@@ -100,24 +119,24 @@ def api_new_course(key="",org="",name="",id=""):
 
     rdis.set(course.key,to_json(course))
     rdis.sadd('%s:course:list' % organization.key,course.key)
-    return rdis.get(course.key) 
+    return callback(request,rdis.get(course.key)) 
 
 @route('/sys/<key>/<org>/course/all')
 def api_all_courses(key="",org=""):
-    if not is_sys(key): return ""
+    if not is_sys(key): return callback(request,"") 
     organization = from_json(rdis.get(Organization().to_key(org)))
     courses = rdis.smembers('%s:course:list' % organization.key)
     courseResp = []
     for course in courses:
         courseResp.append(from_json(rdis.get(course)))
-    return to_json(courseResp)
+    return callback(request,to_json(courseResp))
 
 
 @route('/sys/<key>/<org>/registration/new')
 @route('/sys/<key>/<org>/registration/new/<name>')
 @route('/sys/<key>/<org>/registration/new/<name>/<id>')
 def api_new_registration(key="",org="", name="",id=""):
-    if not is_sys(key): return ""
+    if not is_sys(key): return callback(request,"") 
     if id =="":
         id=new_id()
     organization = from_json(rdis.get(Organization().to_key(org)))
@@ -126,7 +145,7 @@ def api_new_registration(key="",org="", name="",id=""):
 
     rdis.set(registration.key,to_json(registration))
     rdis.sadd('%s:registration:list' % organization.key,registration.key)
-    return rdis.get(registration.key) 
+    return callback(request,rdis.get(registration.key)) 
 
 
 @route('/sys/<org>/track/<reg>/<course>')
@@ -140,33 +159,35 @@ def api_track_registration(org="", reg="", course=""):
     value = request.query.get('value')
     if key and value:
         rdis.hset('%s:track:%s:%s' % (organization.key,registration.id,course.id), key, value)
-        return '{"action":"update"}' 
+        return callback(request,'{"action":"update"}') 
     if key and not value:
-        return to_json(rdis.hmget('%s:track:%s:%s' % (organization.key,registration.id,course.id), key))
+        return callback(request,to_json(rdis.hmget('%s:track:%s:%s' % (organization.key,registration.id,course.id), key)))
     else:
-        return to_json(rdis.hgetall('%s:track:%s:%s' % (organization.key,registration.id,course.id)))
+        return callback(request,to_json(rdis.hgetall('%s:track:%s:%s' % (organization.key,registration.id,course.id))))
 
 @route('/sys/<key>/<org>/link/<reg>/<course>')
 def api_link_course(key="",org="", reg="", course=""):
-    if not is_sys(key,org): return ""
+    if not is_sys(key): return callback(request,"") 
 
     organization = from_json(rdis.get(Organization().to_key(org)))
     course = from_json(rdis.get(Course().to_key(org,course)))
     registration = from_json(rdis.get(Registration().to_key(org,reg)))
     if not valid_for(organization,(course,registration)): return ""
 
-    course_path = unzipdir + course.id
-    course_destination_path = apachedir + course.id
+    course_path = finaldir + course.id
+    course_destination_path = webdir + course.id
     content_path = course_destination_path + "/" + registration.id 
 
     if not os.path.exists(course_destination_path):
         os.makedirs(course_destination_path)
+
     os.symlink(course_path, content_path) 
-    return "OK"
+    courseurl = '%s?course=%s&registration%s' % (contenthost,course.id,registration.id) 
+    return callback(request,'{"url":"%s"}' % courseurl)
 
 @route('/sys/<key>/<org>/upload/<course>', method='POST')
 def upload_course(key="",org="",course=""):
-    if not is_sys(key,org): return ""
+    if not is_sys(key): return callback(request,"") 
 
     id = 'UPLOAD_'+new_id()
     upload     = request.files.get('upload')
@@ -177,8 +198,8 @@ def upload_course(key="",org="",course=""):
 
     move_path = tempdir + new_id() + "/" 
 
-    content_folder = unzipdir + "/" + name
-    final_path = unzipdir + course + "/" 
+    content_folder = finaldir + "/" + name
+    final_path = finaldir + course + "/" 
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -216,8 +237,8 @@ def upload_course(key="",org="",course=""):
     else:
         shutil.rmtree(save_path)
         # I don't know what to do, abort!
-        return ""
+        return callback(request,"") 
 
-    return 'OK'
+    return callback(request,'OK')
     
 
