@@ -15,7 +15,8 @@ debug:True
 
 [upload]
 tempdir:/tmp/
-unzipdir:/var/www/content/
+finaldir:/var/uploads/content/
+webdir:/var/www/content/
 
 [application]
 debug:True 
