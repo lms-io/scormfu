@@ -26,3 +26,6 @@ syskey:KEYGOESHERE
 aws_enabled=False
 aws_access_key_id=<<awskey>>
 aws_secret_access_key=<<awssecret>>
+
+[content]
+host:http://localhost/player?course=%%s&registration=%%s
