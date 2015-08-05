@@ -147,6 +147,15 @@ def api_new_registration(key="",org="", name="",id=""):
     rdis.sadd('%s:registration:list' % organization.key,registration.key)
     return callback(request,rdis.get(registration.key)) 
 
+@route('/sys/<key>/<org>/registration/all')
+def api_all_courses(key="",org=""):
+    if not is_sys(key): return callback(request,"") 
+    organization = from_json(rdis.get(Organization().to_key(org)))
+    registrations = rdis.smembers('%s:registration:list' % organization.key)
+    registrationResp = []
+    for registration in registrations:
+        registrationResp.append(from_json(rdis.get(registration)))
+    return callback(request,to_json(registrationResp))
 
 @route('/sys/<org>/track/<reg>/<course>')
 def api_track_registration(org="", reg="", course=""):
