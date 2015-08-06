@@ -191,7 +191,7 @@ def api_link_course(key="",org="", reg="", course=""):
         os.makedirs(course_destination_path)
 
     os.symlink(course_path, content_path) 
-    courseurl = contenthost % (course.id,registration.id) 
+    courseurl = contenthost % (course.id,registration.id, organization.id) 
     return callback(request,'{"url":"%s"}' % courseurl)
 
 @route('/sys/<key>/<org>/upload/<course>', method='POST')
