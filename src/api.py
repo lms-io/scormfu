@@ -50,7 +50,6 @@ def new_id():
     return ''.join(random.choice('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ') for i in range(16))
 
 def callback(r, v):
-    print(r.query.get('callback'))
     if r.query.get('callback') is not None:
         return '%s(%s)' % (r.query.get('callback'),v)
     else:
@@ -214,6 +213,7 @@ def upload_course(key="",org="",course=""):
         os.makedirs(save_path)
 
     upload.save(save_path) 
+    print('take %s and put it at %s' % (name, save_path))
 
     with zipfile.ZipFile(save_zip, "r") as z:
         z.extractall(save_path)
@@ -244,9 +244,9 @@ def upload_course(key="",org="",course=""):
     if os.path.isfile(save_path + "index.html"):
         shutil.move(save_path,final_path) 
     else:
-        shutil.rmtree(save_path)
+        # shutil.rmtree(save_path)
         # I don't know what to do, abort!
-        return callback(request,"") 
+        return callback(request,"FAILED") 
 
     return callback(request,'OK')
     
